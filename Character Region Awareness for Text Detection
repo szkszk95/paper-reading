@@ -2,3 +2,80 @@
 
 [Paper]( http://openaccess.thecvf.com/content_CVPR_2019/papers/Baek_Character_Region_Awareness_for_Text_Detection_CVPR_2019_paper.pdf )
 
+现有的文本检测方案对固态的文字检测比较鲁棒，但是对于一些存在形变的文本检测效果不佳。
+
+本文提出了一种新式的模型**CRAFT**，可以通过检测每一个单个的字符以及字符与字符之间的形变连接关系来实现形变文本的检测。
+
+但是基于字符的文本检测存在缺少数据集标注的问题，所以本文的还提出了一种半监督伪标签的方式来进行模型的训练。
+
+### 整体结构
+
+CRAFT的整体是由两个部分组成：
+
+- region score：用于寻找每一个单独的字符
+- affinity score：用于将单个的字符连成一个整体
+
+同时，本文用于构造score map的方式也与之前的EAST等方法十分不一样，本文通过构造一个1channel的heatmap来表示每一个character的存在范围。
+
+所以整个网络的结构如下，同样是一个FPN网络，上采样到$1/2$的原图尺寸。输出两个单通道的heatmap，道标字符区域以及连接区域的预测值。
+
+<img src="_assets\craft_backbone.png" style="zoom: 80%;" />
+
+### heatmap如何表示文本框
+
+下图Fig3展示的是R-map和A-map的ground truth的表示方式。
+
+- 生成一个2D的高斯分布
+
+- 对于每一个字符，得到其对应的box，最后由对角线相交得到其四边形框的中心，随后可以得到由对角线组成的上下两个三角形，找到其中心位置后，与相邻的后续字符两个三角形中心点相连组成Affine-map的四边形
+- 将生成的2D高斯分布映射到每一个四边形框内，即得到对应图片的gt
+
+![](_assets\craft_gt.png)
+
+### 如何进行弱监督训练
+
+在训练的过程中，自己生成的SynthText数据是可以拥有字符级别的标注的，但是大部门的真实场景下的数据集不包含字符级的标注。所以在训练时需要生成一系列伪标签辅助进行训练。
+
+- 首先，将文字区域从原图中截取下来
+- 然后用最新的模型来预测扣下来的图的文字heatmap
+- 随后使用the watershed algorithm（分水岭算法）进行文字区域的分割
+- 基于分割结果由fig3的中的步骤生成gt
+
+![](_assets\craft_weak.png)
+
+![](_assets\craft_wrap.png)
+
+在这个流程中，会因为一开始的模型水平比较烂，所以生成很多有问题的R-score，而这些错误的标签会让模型的能力变差，为了避免这个问题，在生成伪标签的时候需要对其真实性进行评估。
+
+评估的方式主要依赖于annotation中标注的文本的字符长度
+
+令一个样本$w$，其文本框区域为$R(w)$，长度为$l(w)$，预测得到的文本字符长度为$l^c(w)$，计算这个样本生成的heatmap的置信度为：
+$$
+S_{conf}(w)=\frac{l(w)-min(l(w),|l(w)-l^c(w)|)}{l(w)}
+$$
+解释着说就是生成的文本长度跟标注长度越接近得分越高。随后可以得到整张image的pixel-wise的置信度：
+$$
+S_c(p)=S_{conf}(w) \ if\ p\in R(w)\ else \ 1 
+$$
+随后可以得到伪标签的优化目标：
+$$
+L=\sum_{p}S_c(p)\cdot (||S_r(p)-S_r^*(p)||^2_2+||S_a(p)-S_a^*(p)||^2_2)
+$$
+![](_assets\craft_gen.png)
+
+由于模型一开始的能力比较差，如果conf的得分小于0.5，那么就直接认为每一个字符是一样长的，并且价格conf设为0.5进行训练。
+
+### Inference
+
+Connected Component Labeling，连通区域分析，同时不需要NMS这样复杂的后处理。
+
+特点在于通过字符级的检测，可以生成不规则的多边形
+
+![](_assets\craft_poly.png)
+
+### 效果
+
+十分可观
+
+![](_assets\craft_res.png)
+
