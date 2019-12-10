@@ -2,3 +2,76 @@
 
 [CVPR 2019 Paper](http://arxiv.org/abs/1904.06535)
 
+本文的主要思路是基于现阶段检测方法的两个比较明显的问题：
+
+- CNN的感受野不足，类似EAST一类的直接回归边框的算法受限制比较明显，对于长文本的检测能力不足
+- 由于对于文本的表示方式过于简单，所以当处理一些形状比较独特的文本会比较吃力
+- <img src="_assets\lomo-1.png" style="zoom:80%;" />
+
+本文的方法大致就是通过不断的对当前的结果进行分析，来得到更好的结果，来弱化上述两个问题带来的影响
+
+如标题所说，很容易想到大致的思路就是一种多模块迭代的方式进行处理。本文共提出了三个模块来实现这个操作：
+
+- DR，direct regression，就是基础的回归模块，类似EAST
+- IRM，iterative refineme，就是一个不断迭代来优化结果的模块
+- SEM，shape expression，就是基于迭代后输出的特征没暑促胡更加精确的位置表示
+
+<img src="_assets\lomo-arch.png" style="zoom:80%;" />
+
+### Direct Regressor
+
+基础的回归模块，输出$1/4$大小的dense的1通道分类结果，还有8通道的位置信息，分类使用dice loss
+
+### Iterative Refinement Module
+
+这里应该是为了让检测长文本的效果变好，但是还有点不太理解
+
+- 首先根据DR得到的部分框，过一个ROI transform层，得到一个特征
+- 过三层Conv得到更细致的特征
+- 通过1x1的conv以及sigmoid生成4-corner的attention map
+- 做点乘以及reduce sum
+- 过1x1得到4个角的偏移量
+
+<img src="_assets\lomo-irm.png" style="zoom:80%;" />
+
+### Shape Expression Module
+
+这里是为了得到更加精准的文本表示
+
+- 根据得到的text四角标记，过一个ROI transform得到一个区域特征
+- 过两个block，每一个block会upsample一次+两个conv
+- 最终得到一个32x256x128的区域然后过一个6通道输出1x1conv得到所有的property map
+
+这里SEM的输出包括：
+
+- text region，是一个binary mask，在多边形区域内是1，不在是0
+- text center line is also a binary mask based on the side-shrunk version of text polygon annotation
+- Border offsets are 4 channel maps，对应text center line中每一个位置的偏移量
+
+<img src="_assets\lomo-sem.png" style="zoom:80%;" />
+
+看实验结果感觉不是特别突出。这是一个recall低但是p很高的方法，说明他找到的比较少，但是找到的对的比较多，误检比较多，但是漏检很少
+
+
+
+
+
+## Arbitrary Shape Scene Text Detection with Adaptive Text Region Representation
+
+[CVPR2019 Paper](https://arxiv.org/abs/1905.05980)
+
+三星的一篇文章，从新的标注思路方式进行了改进，想法可以说比较独特，也可以说比较鸡肋…
+
+首先这篇文章有几个创新点
+
+- SE-VGG
+
+- Adaptive pair points
+- RNN+stop label
+- polygon NMS
+
+![](_assets\App-1.png)
+
+![App-2](_assets\App-2.png)
+
+![App-3](_assets\App-3.png)
