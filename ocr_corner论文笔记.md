@@ -21,7 +21,7 @@
 
 ## 2 pipeline
 
-![image-20191202222635249](/Users/wangkai/Library/Application Support/typora-user-images/image-20191202222635249.png)
+![image-20191202222635249](_assets/wk_corner_01.png)
 
 首先检测文本区域的边角点（上左，上右，下右，下左）而不是直接检测文本框。除此之外，预测位置语义分割map,而不是直接预测文本/非文本区域。最后，通过采样和组合检测边角点生成候选生成候选的bounding box，并通过语义信息估计不可能的bounding box。整条pipeline描述在fig2中。
 
@@ -46,7 +46,7 @@
 
 ## 5 网络
 
-![image-20191202223546338](/Users/wangkai/Library/Application Support/typora-user-images/image-20191202223546338.png)
+![image-20191202223546338](_assets/wk_corner_02.png)
 
 
 
@@ -75,7 +75,7 @@
 
 在训练阶段，遵从SSD中默认box和真实box的匹配策略。为了适应不同尺寸下的场景文本，在多种特征图下使用多种尺寸的默认box。默认的高宽比设置为1
 
-![image-20191202225424651](/Users/wangkai/Library/Application Support/typora-user-images/image-20191202225424651.png)
+![image-20191202225424651](_assets/wk_corner_03.png)
 
 ### 5.3 position-sensitive segmentation
 
@@ -89,7 +89,7 @@
 
 ## 6 Label Genration
 
-<img src="/Users/wangkai/Library/Application Support/typora-user-images/image-20191203091332830.png" alt="image-20191203091332830" style="zoom:50%;" />
+<img src="_assets/wk_corner_04.png" alt="image-20191203091332830" style="zoom:50%;" />
 
 a. corner points
 
@@ -111,7 +111,7 @@ b. Pixel-wise masks
 
 ## 7 Optimization
 
-<img src="/Users/wangkai/Library/Application Support/typora-user-images/image-20191203092426561.png" alt="image-20191203092426561" style="zoom:50%;" />
+<img src="_assets/wk_corner_05.png" alt="image-20191203092426561" style="zoom:50%;" />
 
 Nc:正例default box数
 
@@ -123,7 +123,7 @@ Ns:语义分割中的像素数
 
 ### 7.1 Lconf 得分损失函数
 
-<img src="/Users/wangkai/Library/Application Support/typora-user-images/image-20191203092553593.png" alt="image-20191203092553593" style="zoom:50%;" />
+<img src="_assets/wk_corner_06.png" alt="image-20191203092553593" style="zoom:50%;" />
 
 yc:为default boxes，正样本为1，其他为0
 
@@ -133,11 +133,11 @@ pc：预测得分
 
 ### 7.2 Lloc 偏移量损失
 
-<img src="/Users/wangkai/Library/Application Support/typora-user-images/image-20191203092954549.png" alt="image-20191203092954549" style="zoom:50%;" />
+<img src="_assets/wk_corner_07.png" alt="image-20191203092954549" style="zoom:50%;" />
 
 ### 7.3 position-sensitive segmentation损失
 
-<img src="/Users/wangkai/Library/Application Support/typora-user-images/image-20191203093044917.png" alt="image-20191203093044917" style="zoom:50%;" />
+<img src="_assets/wk_corner_08.png" alt="image-20191203093044917" style="zoom:50%;" />
 
 ys:为label
 
@@ -154,7 +154,6 @@ ps：为预测
 理论上说：
 
 <center>旋转矩阵 = 两个点 + 一个与其垂直的边</center>
-
 对于一个预测点，短边已知（ss），可以通过采样和组合一个边角点集合中的两个来直接构建一个旋转矩阵，例如：上左，上右），（上右，下右），（下左，下右），（下左，上左）
 
 前置规则过滤不合适的边角点对：
@@ -163,17 +162,17 @@ ps：为预测
 2. 已构建的旋转矩形的最短边必须高于阈值（默认为5）
 3. 成对的两点预测出的短边ss1和ss2必须满足：
 
-<img src="/Users/wangkai/Library/Application Support/typora-user-images/image-20191203094553175.png" alt="image-20191203094553175" style="zoom:50%;" />
+<img src="_assets/wk_corner_09.png" alt="image-20191203094553175" style="zoom:50%;" />
 
 ### 8.2 scoring
 
-<img src="/Users/wangkai/Library/Application Support/typora-user-images/image-20191203094750255.png" alt="image-20191203094750255" style="zoom:50%;" />
+<img src="_assets/wk_corner_10.png" alt="image-20191203094750255" style="zoom:50%;" />
 
 在采样和组合边角点以后，会生成大量的候选bounding box，通过位置敏感分割图给候选bounding box赋予分数。
 
 为了处理旋转文本bounding box，本文采用改进的**Rotated Position-Sensitive ROI Average pooling layer**。对于一个旋转的box，先将该box分割为g x g个单元，然后对每个单元创建一个最小覆盖矩形（we generate a rectangle for each bin with the minimum area to cover the bin ）。对该单元中的所有像素重复该步骤，并计算所有像素的最小覆盖矩形的均值。最后，旋转bounding box的分数就是g x g单元中的分数均值
 
-<img src="/Users/wangkai/Library/Application Support/typora-user-images/image-20191203095251019.png" alt="image-20191203095251019" style="zoom:50%;" />
+<img src="_assets/wk_corner_11.png" alt="image-20191203095251019" style="zoom:50%;" />
 
  低分数的候选box会被过滤掉，阈值τ默认为0.6.
 
@@ -182,5 +181,5 @@ ps：为预测
 1. 当两个文本很接近，可能把两个文本预测为一个，因为位置敏感分割可能失效
 2. 在扭曲文本上检测较差
 
-<img src="/Users/wangkai/Library/Application Support/typora-user-images/image-20191203095554991.png" alt="image-20191203095554991" style="zoom:50%;" />
+<img src="_assets/wk_corner_12.png" alt="image-20191203095554991" style="zoom:50%;" />
 
